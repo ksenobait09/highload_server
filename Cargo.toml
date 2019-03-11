@@ -1,0 +1,10 @@
+[package]
+name = "highload_server"
+version = "0.1.0"
+authors = ["Nikita Altunin <ksenobait_09@mail.ru>"]
+edition = "2018"
+
+[dependencies]
+num_cpus = "1.0"
+percent-encoding = "1.0.1"
+chrono = "*"
