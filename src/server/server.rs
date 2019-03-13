@@ -1,11 +1,13 @@
-use std::net::TcpStream;
-use std::io::Read;
-use std::collections::HashMap;
 use std::fs::File;
+use std::io::Read;
 use std::io::Seek;
-use super::request::*;
-use super::config::Config;
+use std::io::SeekFrom;
+use std::io::Write;
+use std::net::TcpStream;
+use std::str;
 
+use super::config::Config;
+use super::request::*;
 
 static CRLF: &'static str = "\r\n";
 static HTTP: &'static str = "HTTP/1.1 ";
@@ -22,18 +24,32 @@ impl Server {
         }
     }
     #[allow(unused, unused_mut)]
-    fn handle_request(document_root: &str, mut stream: TcpStream) {
-        let mut buffer: String = String::new();
-        stream.read_to_string(&mut buffer).unwrap();
+    pub fn handle_request(document_root: &str, mut stream: TcpStream) {
+        let mut buffer = [0; 512];
+        match stream.read(&mut buffer) {
+            Ok(n) if n == 0 => return,
+            Ok(..) => {}
+            Err(_e) => return,
+        };
+
+        let buffer = str::from_utf8(&buffer).unwrap();
         let mut split = buffer.split("\r\n");
         let mut request_raw = split.next().unwrap();
 
-        let mut req = create_response_for_request(document_root, request_raw);
-        let req = match req {
+        let mut res = create_response_for_request(document_root, request_raw);
+        let res = match res {
             Some(r) => r,
             None => return,
         };
 
+        println!("=========================================\n\
+        REQUEST: {:?}\n\
+        RESPONSE:\n\
+        file: {:?} \n\
+        status: {:?}\n\
+        headers: {:?}\n\
+        =========================================",request_raw, res.file, res.status, res.headers);
+        res.send(&mut stream)
     }
 }
 
@@ -53,44 +69,39 @@ impl Response {
         }
     }
 
-    pub fn send(&self, ref mut stream: &mut TcpStream) {
+    pub fn send(self, ref mut stream: &mut TcpStream) {
         let mut buf = String::new();
         buf.push_str(HTTP);
-        buf.push_str();
-        // TODO:: Доделать отправку запроса
-//        buf.push_str(CRLF);
-//        for h in self.headers {
-//            let h_value = match &h {
-//                &Headers::ContentLength(ref v) => &v,
-//                &Headers::ContentType(ref v) => &v,
-//                &Headers::Date(ref v) => &v,
-//                &Headers::Connection(ref v) => &v,
-//                &Headers::Server(_) => "RST",
-//            };
-//            buf.push_str(format!("{}{}", h.get_message().unwrap(),  &&h_value).as_str());
-//            buf.push_str(CRLF);
-//        }
-//        buf.push_str(CRLF);
-//        stream.write(buf.as_bytes()).unwrap();
-//        match self.file {
-//            Some(mut f) => {
-////                buf.push_str(CRLF);
-//                let mut buf = [0; 1024 * 1024];
-//                let mut n: u64 = 0;
-//                loop {
-//                    match f.read(&mut buf).unwrap() {
-//                        0 => { break; }
-//                        i => {
-//                            n += i as u64;
-////                println!("{}", i);
-//                            stream.write(&buf[..i]).unwrap();
-//                            f.seek(SeekFrom::Start(n as u64));
-//                        }
-//                    }
-//                }
-//            }
-//            None => {}
-//        }
-//        stream.flush().unwrap();
+        buf.push_str(self.status.unwrap().to_string().as_str());
+        buf.push_str(" anything");
+        buf.push_str(CRLF);
+        for h in self.headers {
+            buf.push_str(h.as_str());
+            buf.push_str(CRLF);
+        }
+        buf.push_str(CRLF);
+
+        stream.write(buf.as_bytes()).unwrap();
+
+        match self.file {
+            Some(mut f) => {
+                let mut buf = [0; 1024 * 1024];
+                let mut n: u64 = 0;
+                loop {
+                    match f.read(&mut buf).unwrap() {
+                        0 => {
+                            break;
+                        }
+                        i => {
+                            n += i as u64;
+                            stream.write(&buf[..i]).unwrap();
+                            f.seek(SeekFrom::Start(n as u64)).unwrap();
+                        }
+                    }
+                }
+            }
+            None => {}
+        }
+        stream.flush().unwrap();
     }
 }

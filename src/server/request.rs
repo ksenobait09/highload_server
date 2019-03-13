@@ -3,8 +3,6 @@ extern crate percent_encoding;
 use std::clone::Clone;
 use std::ffi::OsStr;
 use std::fs::File;
-use std::io::Read;
-use std::net::TcpStream;
 use std::path::Path;
 
 use chrono::prelude::*;
@@ -35,24 +33,31 @@ pub fn create_response_for_request(document_root: &str, request_raw: &str) -> Op
     response.file = None;
     response.status = Some(STATUS_NOT_FOUND);
 
-    let path_string = format!("{}{}", document_root, request_fields[1]);
-    let mut path = Path::new(&path_string);
+    let url =  percent_decode(request_fields[1].as_bytes()).decode_utf8().unwrap();
+    let url = url.split("?").next().unwrap();
+    let path_string = format!("{}{}", document_root, url);
+    let path = Path::new(&path_string);
 
+    let fullpath;
     if path.is_dir() {
-        path.join("index.html");
+        response.status = Some(STATUS_FORBIDDEN);
+        fullpath = path.join("index.html");
+    } else {
+        fullpath = path.to_path_buf()
     }
 
-    let path = match path.canonicalize() {
+    let path = match fullpath.canonicalize() {
         Ok(p) => Some(p),
-        Err(_) => { None }
+        Err(_) => None
     };
 
     if path == None {
         return Some(response);
     }
+
     let path = path.unwrap();
 
-    if path.starts_with(document_root) {
+    if !path.starts_with(document_root) {
         return Some(response);
     }
 
