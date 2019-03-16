@@ -104,7 +104,7 @@ impl Response {
         match stream.write(buf.as_bytes()) {
             Ok(_) => {}
             Err(_e) => {
-                println!("Error writing to stream");
+//                println!("Error writing to stream");
                 return;
             }
         };
@@ -123,7 +123,7 @@ impl Response {
                             match stream.write(&buf[..i]) {
                                 Ok(_) => {}
                                 Err(_e) => {
-                                    println!("Error writing to stream");
+//                                    println!("Error writing to stream");
                                     return;
                                 }
                             };
@@ -137,7 +137,7 @@ impl Response {
         match stream.flush() {
             Ok(_) => {}
             Err(_e) => {
-                println!("Error flushing to stream");
+//                println!("Error flushing to stream");
                 return;
             }
         };
