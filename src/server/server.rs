@@ -3,13 +3,13 @@ use std::io::Read;
 use std::io::Seek;
 use std::io::SeekFrom;
 use std::io::Write;
+use std::net::TcpListener;
 use std::net::TcpStream;
 use std::str;
 
 use super::config::Config;
 use super::request::*;
 use super::thread_pool::*;
-use std::net::TcpListener;
 
 static CRLF: &'static str = "\r\n";
 static HTTP: &'static str = "HTTP/1.1 ";
@@ -53,14 +53,17 @@ impl Server {
         file: {:?} \n\
         status: {:?}\n\
         headers: {:?}\n\
-        =========================================",request_raw, res.file, res.status, res.headers);
+        =========================================", request_raw, res.file, res.status, res.headers);
         res.send(&mut stream)
     }
     pub fn run(&self) {
-        let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
+        let listener = TcpListener::bind("127.0.0.1:80").unwrap();
 
         for stream in listener.incoming() {
-            let stream = stream.unwrap();
+            let stream = match stream {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
 
             let doc_root = self.document_root.clone();
             self.thread_pool.execute(move || {
@@ -98,7 +101,13 @@ impl Response {
         }
         buf.push_str(CRLF);
 
-        stream.write(buf.as_bytes()).unwrap();
+        match stream.write(buf.as_bytes()) {
+            Ok(_) => {}
+            Err(_e) => {
+                println!("Error writing to stream");
+                return;
+            }
+        };
 
         match self.file {
             Some(mut f) => {
@@ -111,7 +120,13 @@ impl Response {
                         }
                         i => {
                             n += i as u64;
-                            stream.write(&buf[..i]).unwrap();
+                            match stream.write(&buf[..i]) {
+                                Ok(_) => {}
+                                Err(_e) => {
+                                    println!("Error writing to stream");
+                                    return;
+                                }
+                            };
                             f.seek(SeekFrom::Start(n as u64)).unwrap();
                         }
                     }
@@ -119,6 +134,12 @@ impl Response {
             }
             None => {}
         }
-        stream.flush().unwrap();
+        match stream.flush() {
+            Ok(_) => {}
+            Err(_e) => {
+                println!("Error flushing to stream");
+                return;
+            }
+        };
     }
 }
