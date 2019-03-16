@@ -47,17 +47,17 @@ impl Server {
             None => return,
         };
 
-        println!("=========================================\n\
-        REQUEST: {:?}\n\
-        RESPONSE:\n\
-        file: {:?} \n\
-        status: {:?}\n\
-        headers: {:?}\n\
-        =========================================", request_raw, res.file, res.status, res.headers);
+//        println!("=========================================\n\
+//        REQUEST: {:?}\n\
+//        RESPONSE:\n\
+//        file: {:?} \n\
+//        status: {:?}\n\
+//        headers: {:?}\n\
+//        =========================================", request_raw, res.file, res.status, res.headers);
         res.send(&mut stream)
     }
     pub fn run(&self) {
-        let listener = TcpListener::bind("127.0.0.1:80").unwrap();
+        let listener = TcpListener::bind("0.0.0.0:80").unwrap();
 
         for stream in listener.incoming() {
             let stream = match stream {
