@@ -8,23 +8,28 @@ use std::str;
 
 use super::config::Config;
 use super::request::*;
+use super::thread_pool::*;
+use std::net::TcpListener;
 
 static CRLF: &'static str = "\r\n";
 static HTTP: &'static str = "HTTP/1.1 ";
 
 
 pub struct Server {
-    pub config: Config,
+    pub document_root: String,
+    pub thread_pool: ThreadPool,
 }
 
 impl Server {
     pub fn new() -> Server {
+        let cfg = Config::new();
         Server {
-            config: Config::new(),
+            document_root: cfg.document_root,
+            thread_pool: ThreadPool::new(cfg.thread_limit),
         }
     }
     #[allow(unused, unused_mut)]
-    pub fn handle_request(document_root: &str, mut stream: TcpStream) {
+    fn handle_request(document_root: &str, mut stream: TcpStream) {
         let mut buffer = [0; 512];
         match stream.read(&mut buffer) {
             Ok(n) if n == 0 => return,
@@ -50,6 +55,18 @@ impl Server {
         headers: {:?}\n\
         =========================================",request_raw, res.file, res.status, res.headers);
         res.send(&mut stream)
+    }
+    pub fn run(&self) {
+        let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
+
+        for stream in listener.incoming() {
+            let stream = stream.unwrap();
+
+            let doc_root = self.document_root.clone();
+            self.thread_pool.execute(move || {
+                Server::handle_request(doc_root.as_str(), stream);
+            });
+        }
     }
 }
 
