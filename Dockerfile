@@ -20,4 +20,4 @@ RUN rm -rf target
 # Объявлем порт сервера
 EXPOSE 80
 RUN ls -la 
-RUN $HOME/.cargo/bin/cargo run
+CMD $HOME/.cargo/bin/cargo run
