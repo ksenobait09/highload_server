@@ -47,13 +47,13 @@ impl Server {
             None => return,
         };
 
-//        println!("=========================================\n\
-//        REQUEST: {:?}\n\
-//        RESPONSE:\n\
-//        file: {:?} \n\
-//        status: {:?}\n\
-//        headers: {:?}\n\
-//        =========================================", request_raw, res.file, res.status, res.headers);
+        println!("=========================================\n\
+        REQUEST: {:?}\n\
+        RESPONSE:\n\
+        file: {:?} \n\
+        status: {:?}\n\
+        headers: {:?}\n\
+        =========================================", request_raw, res.file, res.status, res.headers);
         res.send(&mut stream)
     }
     pub fn run(&self) {
